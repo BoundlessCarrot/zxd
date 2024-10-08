@@ -1,11 +1,10 @@
 # Zig xxd Implementation Roadmap
 
 ## 1. Basic Setup and File Handling
-- [ ] Set up a new Zig project with build.zig
-- [ ] Implement basic command-line argument parsing
 - [ ] Create a function to open and read a file
 - [ ] Implement error handling for file operations
 - [ ] Add basic tests for file handling
+- [ ] Implement basic command-line argument parsing
 
 ## 2. Core Hexdump Functionality
 - [ ] Implement a function to convert bytes to hex representation

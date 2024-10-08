@@ -1,8 +1,8 @@
 # Zig xxd Implementation Roadmap
 
 ## 1. Basic Setup and File Handling
-- [ ] Create a function to open and read a file
-- [ ] Implement error handling for file operations
+- [X] Create a function to open and read a file
+- [X] Implement error handling for file operations
 - [ ] Add basic tests for file handling
 - [ ] Implement basic command-line argument parsing
 

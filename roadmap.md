@@ -4,7 +4,7 @@
 - [X] Create a function to open and read a file
 - [X] Implement error handling for file operations
 - [ ] Add basic tests for file handling
-- [ ] Implement basic command-line argument parsing
+- [X] Implement basic command-line argument parsing
 
 ## 2. Core Hexdump Functionality
 - [ ] Implement a function to convert bytes to hex representation

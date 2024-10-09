@@ -23,13 +23,13 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, outputContai
     }) |line| {
         defer allocator.free(line);
         switch (@TypeOf(outputContainer)) {
-            @TypeOf(undefined) => {
+            @TypeOf(null) => {
                 pr.print("line {d}: {s}\n", .{ i, line }) catch |err| {
                     std.log.err("Failed to print line {d}: {s}", .{ i, @errorName(err) });
                     continue;
                 };
             },
-            std.ArrayList([]const u8) => {
+            @TypeOf(std.ArrayList([]const u8)) => {
                 outputContainer.append(line) catch |err| {
                     std.log.err("Buffer could not be added to, stopped at line {d}: {s}", .{ i, @errorName(err) });
                     return;
@@ -52,7 +52,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
         } else if (eql(u8, arg, "--hex")) {
             outputType = "{X}";
         } else if (eql(u8, arg, "--file")) {
-            openFile(args.next().?, allocator, undefined);
+            openFile(args.next().?, allocator, null);
         }
     }
 }

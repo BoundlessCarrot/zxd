@@ -3,13 +3,13 @@
 ## 1. Basic Setup and File Handling
 - [X] Create a function to open and read a file
 - [X] Implement error handling for file operations
-- [ ] Add basic tests for file handling
+- [-] Add basic tests for file handling
 - [X] Implement basic command-line argument parsing
 
 ## 2. Core Hexdump Functionality
 - [ ] Implement a function to convert bytes to hex representation
-- [ ] Create a basic hexdump of file contents (hex only)
-- [ ] Add ASCII representation alongside hex output
+- [X] Create a basic hexdump of file contents (hex only)
+- [X] Add ASCII representation alongside hex output
 - [ ] Implement address counting in the output
 - [ ] Format output to match xxd's default format:
   ```

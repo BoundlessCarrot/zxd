@@ -3,7 +3,8 @@ const pr = std.io.getStdOut().writer();
 
 const eql = std.mem.eql;
 
-var outputType: []const u8 = undefined;
+// var outputType: []const u8 = undefined;
+const outputPair = .{ []const u8, []const u8 };
 
 //maybe the flow should be:
 // print each 128 bytes in hex and ascii to a buffer (pre-prep the lines)
@@ -12,47 +13,42 @@ var outputType: []const u8 = undefined;
 // could also have it be able to write to a file with a flag or smth
 // or a separate function
 
-pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, outputContainer: anytype) void {
+pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]const u8) void {
     // Get file handler and defer it closing
     const file = std.fs.cwd().openFile(filename, .{}) catch |err| {
-        std.log.err("Failed to open file {s}", .{@errorName(err)});
+        std.log.err("Failed to open file: {s}", .{@errorName(err)});
         return;
     };
     defer file.close();
 
-    // Read from file stream until we hit the delimiter or EOF
-    // Log errors if unable to open the file
-    var i: usize = 0;
-    while (file.reader().readUntilDelimiterOrEofAlloc(allocator, '\n', std.math.maxInt(usize)) catch |err| {
-        std.log.err("Failed to read line: {s}", .{@errorName(err)});
+    const stat = file.stat() catch |err| {
+        std.log.err("Failed to read file metadata: {s}", .{@errorName(err)});
         return;
-    }) |line| {
-        defer allocator.free(line);
+    };
 
-        // Change procedure based on if we have a buffer passed in, mostly for tests
-        //   - null             --> print to stdOut
-        //   - std.ArrayList    --> print to arraylist buffer (maybe useful in the future? idk)
-        switch (@TypeOf(outputContainer)) {
-            @TypeOf(null) => {
-                pr.print("{o}: {} {s}\n", .{ i, std.fmt.fmtSliceHexLower(line), line }) catch |err| {
-                    std.log.err("Failed to print line {d}: {s}", .{ i, @errorName(err) });
-                    continue;
-                };
+    buffer.* = file.readToEndAlloc(allocator, stat.size) catch |err| {
+        std.log.err("Failed to read file: {s}", .{@errorName(err)});
+        return;
+    };
+}
+
+fn bytesToHex(bytes: []const u8, buffer: *std.ArrayList([]const u8)) !void {
+    for (0..bytes.len) |byte_idx| {
+        switch (byte_idx % 2 == 0) {
+            true => {
+                var hex_buf: [16]u8 = undefined;
+                const converted = try std.fmt.bufPrint(&hex_buf, "{x}", .{bytes[byte_idx]});
+                try buffer.append(converted);
             },
-            @TypeOf(std.ArrayList([]const u8)) => {
-                outputContainer.append(line) catch |err| {
-                    std.log.err("Buffer could not be added to, stopped at line {d}: {s}", .{ i, @errorName(err) });
-                    return;
-                };
-            },
-            else => @compileError("Unsupported buffer type"),
+            false => continue,
         }
-
-        i += 1;
     }
 }
 
 fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.Allocator) !void {
+    var inputBuffer: []const u8 = undefined;
+    var hexBuffer = std.ArrayList([]const u8).init(allocator);
+
     while (args.next()) |arg| {
         if (eql(u8, arg, "--help") or eql(u8, arg, "-h")) {
             try pr.print("Usage: zxd [flags] [data or files]\n", .{});
@@ -60,17 +56,28 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
             try pr.print("\t--hex: print data in hexadecimal\n", .{});
             try pr.print("\t--file: read file in [datatype] \n", .{});
         } else if (eql(u8, arg, "--hex")) {
-            outputType = "{X}";
+            continue;
         } else if (eql(u8, arg, "--file")) {
-            openFile(args.next().?, allocator, null);
+            openFile(args.next().?, allocator, &inputBuffer);
+            try bytesToHex(inputBuffer, &hexBuffer);
+
+            var i: usize = 0;
+            while (i < hexBuffer.items.len) {
+                const chunk_size = @min(hexBuffer.items.len - i, 8);
+                const chunk = hexBuffer.items[i..(i + chunk_size)];
+
+                try pr.print("Chunk {d}: ", .{i / 8 + 1});
+                for (chunk) |item| {
+                    try pr.print("{x} ", .{item});
+                }
+                try pr.print("{s}", .{inputBuffer[i..(i + (chunk_size * 2))]});
+                try pr.print("\n", .{});
+
+                i += chunk_size;
+            }
         }
     }
 }
-
-// fn bytesToHex(inputBytes: []const u8, outputContainer: anytype) []const u8 {
-//     _ = outputContainer;
-//     return std.fmt.fmtSliceHexLower(inputBytes);
-// }
 
 pub fn main() !void {
     // Init allocator

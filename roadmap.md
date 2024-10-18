@@ -7,10 +7,10 @@
 - [X] Implement basic command-line argument parsing
 
 ## 2. Core Hexdump Functionality
-- [ ] Implement a function to convert bytes to hex representation
+- [X] Implement a function to convert bytes to hex representation
 - [X] Create a basic hexdump of file contents (hex only)
 - [X] Add ASCII representation alongside hex output
-- [ ] Implement address counting in the output
+- [X] Implement address counting in the output
 - [ ] Format output to match xxd's default format:
   ```
   00000000: 7f45 4c46 0201 0100 0000 0000 0000 0000  .ELF............

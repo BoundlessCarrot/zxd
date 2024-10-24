@@ -32,17 +32,16 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]c
     };
 }
 
-fn bytesToHex(bytes: []const u8, buffer: *std.ArrayList([]const u8)) !void {
-    for (0..bytes.len) |byte_idx| {
-        switch (byte_idx % 2 == 0) {
-            true => {
-                var hex_buf: [16]u8 = undefined;
-                const converted = try std.fmt.bufPrint(&hex_buf, "{x}", .{bytes[byte_idx]});
-                try buffer.append(converted);
-            },
-            false => continue,
-        }
+fn bytesToHex(bytes: []const u8, buffer: *std.ArrayList([]const u8)) ![]const u8 {
+    // for (0..bytes.len) |byte_idx| {
+    var byte_idx: usize = 0;
+    while (byte_idx < bytes.len) : (byte_idx += 1) {
+        var hex_buf: [16]u8 = undefined;
+        const converted = try std.fmt.bufPrint(&hex_buf, "{x}", .{bytes[byte_idx]});
+        try buffer.append(converted);
     }
+
+    return buffer.toOwnedSlice();
 }
 
 fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.Allocator) !void {
@@ -59,7 +58,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
             continue;
         } else if (eql(u8, arg, "--file")) {
             openFile(args.next().?, allocator, &inputBuffer);
-            try bytesToHex(inputBuffer, &hexBuffer);
+            _ = try bytesToHex(inputBuffer, &hexBuffer);
 
             var i: usize = 0;
             while (i < hexBuffer.items.len) {
@@ -70,7 +69,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
                 for (chunk) |item| {
                     try pr.print("{x} ", .{item});
                 }
-                try pr.print("{s}", .{inputBuffer[i..(i + (chunk_size * 2))]});
+                // try pr.print("{s}", .{inputBuffer[i..(i + (chunk_size * 2))]});
                 try pr.print("\n", .{});
 
                 i += chunk_size;
@@ -94,4 +93,14 @@ pub fn main() !void {
     _ = args.skip();
 
     try processCommandLineArgs(&args, gpa.allocator());
+}
+
+test bytesToHex {
+    const inputBuffer: []const u8 = "Hello World";
+    const expectedOutput: []const u8 = &[_]u8{ 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64 };
+
+    var buffer = std.ArrayList([]const u8).init(std.testing.allocator);
+    const convertedBytes: []const u8 = try bytesToHex(inputBuffer, &buffer);
+
+    std.testing.expectEqualStrings(expectedOutput, convertedBytes);
 }

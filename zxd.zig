@@ -2,6 +2,7 @@ const std = @import("std");
 const pr = std.io.getStdOut().writer();
 
 const eql = std.mem.eql;
+const ip = std.ascii.isPrint;
 
 // var outputType: []const u8 = undefined;
 const outputPair = .{ []const u8, []const u8 };
@@ -32,21 +33,19 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]c
     };
 }
 
-fn bytesToHex(bytes: []const u8, buffer: *std.ArrayList([]const u8)) ![]const u8 {
-    // for (0..bytes.len) |byte_idx| {
-    var byte_idx: usize = 0;
-    while (byte_idx < bytes.len) : (byte_idx += 1) {
-        var hex_buf: [16]u8 = undefined;
-        const converted = try std.fmt.bufPrint(&hex_buf, "{x}", .{bytes[byte_idx]});
-        try buffer.append(converted);
+fn bytesToHex(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
+    var result = std.ArrayList(u8).init(allocator);
+    defer result.deinit();
+
+    for (bytes) |byte| {
+        try result.writer().print("{x:0>2}", .{byte});
     }
 
-    return buffer.toOwnedSlice();
+    return result.toOwnedSlice();
 }
 
 fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.Allocator) !void {
     var inputBuffer: []const u8 = undefined;
-    var hexBuffer = std.ArrayList([]const u8).init(allocator);
 
     while (args.next()) |arg| {
         if (eql(u8, arg, "--help") or eql(u8, arg, "-h")) {
@@ -58,20 +57,32 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
             continue;
         } else if (eql(u8, arg, "--file")) {
             openFile(args.next().?, allocator, &inputBuffer);
-            _ = try bytesToHex(inputBuffer, &hexBuffer);
+            const hexString = try bytesToHex(inputBuffer, allocator);
+            defer allocator.free(hexString);
 
             var i: usize = 0;
-            while (i < hexBuffer.items.len) {
-                const chunk_size = @min(hexBuffer.items.len - i, 8);
-                const chunk = hexBuffer.items[i..(i + chunk_size)];
+            while (i < hexString.len) {
+                const chunk_size = @min(hexString.len - i, 32);
+                const chunk = hexString[i..(i + chunk_size)];
 
-                try pr.print("Chunk {d}: ", .{i / 8 + 1});
-                for (chunk) |item| {
-                    try pr.print("{x} ", .{item});
+                const asciiStart: usize = i / 2;
+                const asciiEnd: usize = asciiStart + (chunk_size / 2);
+
+                try pr.print("{o:0>8}: ", .{i / 16});
+                var j: usize = 0;
+                while (j < chunk_size) : (j += 4) {
+                    try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});
                 }
-                // try pr.print("{s}", .{inputBuffer[i..(i + (chunk_size * 2))]});
-                try pr.print("\n", .{});
 
+                try pr.print(" ", .{});
+                for (inputBuffer[asciiStart..asciiEnd]) |char| {
+                    if (ip(char)) {
+                        try pr.print("{c}", .{char});
+                    } else {
+                        try pr.print("", .{});
+                    }
+                }
+                try pr.print("\n", .{});
                 i += chunk_size;
             }
         }
@@ -95,12 +106,13 @@ pub fn main() !void {
     try processCommandLineArgs(&args, gpa.allocator());
 }
 
-test bytesToHex {
-    const inputBuffer: []const u8 = "Hello World";
-    const expectedOutput: []const u8 = &[_]u8{ 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64 };
+test "bytesToHex" {
+    const allocator = std.testing.allocator;
+    const input = "Hello World";
+    const expected = "48656c6c6f20576f726c64";
 
-    var buffer = std.ArrayList([]const u8).init(std.testing.allocator);
-    const convertedBytes: []const u8 = try bytesToHex(inputBuffer, &buffer);
+    const result = try bytesToHex(input, allocator);
+    defer allocator.free(result);
 
-    std.testing.expectEqualStrings(expectedOutput, convertedBytes);
+    try std.testing.expectEqualStrings(expected, result);
 }

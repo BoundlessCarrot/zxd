@@ -11,11 +11,11 @@
 - [X] Create a basic hexdump of file contents (hex only)
 - [X] Add ASCII representation alongside hex output
 - [X] Implement address counting in the output
-- [ ] Format output to match xxd's default format:
+- [X] Format output to match xxd's default format:
   ```
   00000000: 7f45 4c46 0201 0100 0000 0000 0000 0000  .ELF............
   ```
-- [ ] Add tests for hex conversion and formatting
+- [X] Add tests for hex conversion and formatting
 
 ## 3. Basic Options
 - [ ] Implement `-l` length option to limit output

@@ -62,13 +62,17 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
 
             var i: usize = 0;
             while (i < hexString.len) {
+                // Figure out how big the current line/chunk is
                 const chunk_size = @min(hexString.len - i, 32);
                 const chunk = hexString[i..(i + chunk_size)];
 
+                // Translate the hex position to ascii position
                 const asciiStart: usize = i / 2;
                 const asciiEnd: usize = asciiStart + (chunk_size / 2);
 
+                // Print positions in octal
                 try pr.print("{o:0>8}: ", .{i / 16});
+                // Pring the converted hex
                 var j: usize = 0;
                 while (j < chunk_size) : (j += 4) {
                     try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});

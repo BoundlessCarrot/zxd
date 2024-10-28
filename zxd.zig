@@ -78,6 +78,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
                     try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});
                 }
 
+                // Print the associated ascii
                 try pr.print(" ", .{});
                 for (inputBuffer[asciiStart..asciiEnd]) |char| {
                     if (ip(char)) {
@@ -87,6 +88,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.All
                     }
                 }
                 try pr.print("\n", .{});
+                // Update the position
                 i += chunk_size;
             }
         }

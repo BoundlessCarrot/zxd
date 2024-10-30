@@ -18,8 +18,8 @@
 - [X] Add tests for hex conversion and formatting
 
 ## 3. Basic Options
-- [ ] Implement `-l` length option to limit output
-- [ ] Add `-s` option for starting offset
+- [X] Implement `-l` length option to limit output
+- [X] Add `-s` option for starting offset
 - [ ] Implement `-c` option to control bytes per line
 - [ ] Add unit tests for each option
 

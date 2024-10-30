@@ -4,15 +4,27 @@ const pr = std.io.getStdOut().writer();
 const eql = std.mem.eql;
 const ip = std.ascii.isPrint;
 
-// var outputType: []const u8 = undefined;
-const outputPair = .{ []const u8, []const u8 };
+const OutputType = enum {
+    hex,
+    octal,
+    binary,
+};
 
-//maybe the flow should be:
-// print each 128 bytes in hex and ascii to a buffer (pre-prep the lines)
-// print to stdout with a marker in octal
-// openFile would then only open the file and place file contents into a container
-// could also have it be able to write to a file with a flag or smth
-// or a separate function
+const DataContainer = struct {
+    allocator: std.mem.Allocator,
+    inputBuffer: []const u8 = undefined,
+    outputBuffer: []const u8 = undefined,
+    outputType: OutputType = OutputType.hex,
+    startOffset: usize = 0,
+    endOffset: ?usize = null,
+
+    const Self = @This();
+
+    fn deinit(self: Self) void {
+        self.allocator.free(self.inputBuffer);
+        self.allocator.free(self.outputBuffer);
+    }
+};
 
 pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]const u8) void {
     // Get file handler and defer it closing
@@ -44,53 +56,91 @@ fn bytesToHex(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
     return result.toOwnedSlice();
 }
 
-fn processCommandLineArgs(args: *std.process.ArgIterator, allocator: std.mem.Allocator) !void {
-    var inputBuffer: []const u8 = undefined;
+fn bytesToOctal(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
+    // var result = std.ArrayList(u8).init(allocator);
+    // defer result.deinit();
+    //
+    // for (bytes) |byte| {
+    //     try result.writer().print("{o:0>8}", .{byte});
+    // }
 
+    // return result.toOwnedSlice();
+    _ = bytes;
+    _ = allocator;
+    return "datatype unsupported for now";
+}
+
+fn bytesToBinary(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
+    // var result = std.ArrayList(u8).init(allocator);
+    // defer result.deinit();
+    //
+    // for (bytes) |byte| {
+    //     try result.writer().print("{b:0>8}", .{byte});
+    // }
+    //
+    // return result.toOwnedSlice();
+    _ = bytes;
+    _ = allocator;
+    return "datatype unsupported for now";
+}
+
+fn printOutputBuffer(container: DataContainer) !void {
+    var startOffset = container.startOffset;
+    const endOffset = if (container.endOffset != null) (startOffset + container.endOffset.?) else container.inputBuffer.len;
+
+    while (startOffset < endOffset) {
+        // Figure out how big the current line/chunk is
+        const chunk_size = @min(endOffset - startOffset, 32);
+        const chunk = container.outputBuffer[startOffset..(startOffset + chunk_size)];
+
+        // Translate the hex position to ascii position
+        const asciiStart: usize = startOffset / 2;
+        const asciiEnd: usize = asciiStart + (chunk_size / 2);
+
+        // Print positions in octal
+        try pr.print("{o:0>8}: ", .{startOffset / 16});
+
+        // Pring the converted hex
+        var j: usize = 0;
+        while (j < chunk_size) : (j += 4) {
+            try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});
+        }
+
+        // Print the associated ascii
+        try pr.print(" ", .{});
+        for (container.inputBuffer[asciiStart..asciiEnd]) |char| {
+            if (ip(char)) {
+                try pr.print("{c}", .{char});
+            } else {
+                try pr.print("", .{});
+            }
+        }
+        try pr.print("\n", .{});
+
+        // Update the position
+        startOffset += chunk_size;
+    }
+}
+
+fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContainer) !void {
     while (args.next()) |arg| {
         if (eql(u8, arg, "--help") or eql(u8, arg, "-h")) {
-            try pr.print("Usage: zxd [flags] [data or files]\n", .{});
-            try pr.print("\t--help or -h: print this message\n", .{});
-            try pr.print("\t--hex: print data in hexadecimal\n", .{});
-            try pr.print("\t--file: read file in [datatype] \n", .{});
-        } else if (eql(u8, arg, "--hex")) {
-            continue;
-        } else if (eql(u8, arg, "--file")) {
-            openFile(args.next().?, allocator, &inputBuffer);
-            const hexString = try bytesToHex(inputBuffer, allocator);
-            defer allocator.free(hexString);
-
-            var i: usize = 0;
-            while (i < hexString.len) {
-                // Figure out how big the current line/chunk is
-                const chunk_size = @min(hexString.len - i, 32);
-                const chunk = hexString[i..(i + chunk_size)];
-
-                // Translate the hex position to ascii position
-                const asciiStart: usize = i / 2;
-                const asciiEnd: usize = asciiStart + (chunk_size / 2);
-
-                // Print positions in octal
-                try pr.print("{o:0>8}: ", .{i / 16});
-                // Pring the converted hex
-                var j: usize = 0;
-                while (j < chunk_size) : (j += 4) {
-                    try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});
-                }
-
-                // Print the associated ascii
-                try pr.print(" ", .{});
-                for (inputBuffer[asciiStart..asciiEnd]) |char| {
-                    if (ip(char)) {
-                        try pr.print("{c}", .{char});
-                    } else {
-                        try pr.print("", .{});
-                    }
-                }
-                try pr.print("\n", .{});
-                // Update the position
-                i += chunk_size;
-            }
+            try pr.print("Usage: zxd [flags] [file]\n\n", .{});
+            try pr.print("Flags:\n", .{});
+            try pr.print("  -h, --help    Print this help message\n", .{});
+            try pr.print("  -H, --hex     Print data in hexadecimal format (default)\n", .{});
+            try pr.print("  -f, --file    Read input from specified file\n", .{});
+            try pr.print("  -l, --length  Specify number of bytes to read\n", .{});
+            try pr.print("  -s, --start   Start reading from specified offset\n", .{});
+            std.process.exit(0);
+        } else if (eql(u8, arg, "--hex") or eql(u8, arg, "-H")) {
+            container.outputType = OutputType.hex;
+        } else if (eql(u8, arg, "--file") or eql(u8, arg, "-f")) {
+            openFile(args.next().?, container.allocator, &container.inputBuffer);
+        } else if (eql(u8, arg, "--length") or eql(u8, arg, "-l")) {
+            container.endOffset = try std.fmt.parseInt(usize, args.next().?, 10);
+        } else if (eql(u8, arg, "--start") or eql(u8, arg, "-s")) {
+            container.startOffset = try std.fmt.parseInt(u8, args.next().?, 10);
         }
     }
 }
@@ -109,7 +159,18 @@ pub fn main() !void {
 
     _ = args.skip();
 
-    try processCommandLineArgs(&args, gpa.allocator());
+    var container: DataContainer = .{ .allocator = gpa.allocator() };
+    defer container.deinit();
+
+    try processCommandLineArgs(&args, &container);
+
+    container.outputBuffer = switch (container.outputType) {
+        OutputType.hex => try bytesToHex(container.inputBuffer, container.allocator),
+        OutputType.octal => try bytesToOctal(container.inputBuffer, container.allocator),
+        OutputType.binary => try bytesToBinary(container.inputBuffer, container.allocator),
+    };
+
+    try printOutputBuffer(container);
 }
 
 test "bytesToHex" {

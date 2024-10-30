@@ -20,8 +20,8 @@
 ## 3. Basic Options
 - [X] Implement `-l` length option to limit output
 - [X] Add `-s` option for starting offset
-- [ ] Implement `-c` option to control bytes per line
-- [ ] Add unit tests for each option
+- [X] Implement `-c` option to control bytes per line
+- [-] Add unit tests for each option
 
 ## 4. Advanced Features
 - [ ] Implement binary file input (`-b` option)

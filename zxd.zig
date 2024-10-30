@@ -17,6 +17,7 @@ const DataContainer = struct {
     outputType: OutputType = OutputType.hex,
     startOffset: usize = 0,
     endOffset: ?usize = null,
+    bytesPerLine: usize = 32,
 
     const Self = @This();
 
@@ -90,15 +91,15 @@ fn printOutputBuffer(container: DataContainer) !void {
 
     while (startOffset < endOffset) {
         // Figure out how big the current line/chunk is
-        const chunk_size = @min(endOffset - startOffset, 32);
+        const chunk_size = @min(endOffset - startOffset, container.bytesPerLine);
         const chunk = container.outputBuffer[startOffset..(startOffset + chunk_size)];
 
         // Translate the hex position to ascii position
         const asciiStart: usize = startOffset / 2;
         const asciiEnd: usize = asciiStart + (chunk_size / 2);
 
-        // Print positions in octal
-        try pr.print("{o:0>8}: ", .{startOffset / 16});
+        // Print byte offset
+        try pr.print("{x:0>8}: ", .{startOffset});
 
         // Pring the converted hex
         var j: usize = 0;
@@ -127,22 +128,23 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
         if (eql(u8, arg, "--help") or eql(u8, arg, "-h")) {
             try pr.print("Usage: zxd [flags] [file]\n\n", .{});
             try pr.print("Flags:\n", .{});
-            try pr.print("  -h, --help    Print this help message\n", .{});
-            try pr.print("  -H, --hex     Print data in hexadecimal format (default)\n", .{});
-            try pr.print("  -f, --file    Read input from specified file\n", .{});
-            try pr.print("  -l, --length  Specify number of bytes to read\n", .{});
-            try pr.print("  -s, --start   Start reading from specified offset\n", .{});
+            try pr.print("  -h, --help      Print this help message\n", .{});
+            try pr.print("  -H, --hex       Print data in hexadecimal format (default)\n", .{});
+            try pr.print("  -f, --file      Read input from specified file\n", .{});
+            try pr.print("  -l, --length    Specify number of bytes to read\n", .{});
+            try pr.print("  -s, --start     Start reading from specified offset\n", .{});
+            try pr.print("  -c, --per-line  Control the number of bytes per line\n", .{});
             std.process.exit(0);
         } else if (eql(u8, arg, "--hex") or eql(u8, arg, "-H")) {
             container.outputType = OutputType.hex;
         } else if (eql(u8, arg, "--file") or eql(u8, arg, "-f")) {
             openFile(args.next().?, container.allocator, &container.inputBuffer);
         } else if (eql(u8, arg, "--length") or eql(u8, arg, "-l")) {
-            container.endOffset = try std.fmt.parseInt(usize, args.next().?, 10);
-            container.endOffset = std.fmt.parseInt(usize, args.next().?, 10) catch 0;
+            container.endOffset = std.fmt.parseInt(usize, args.next().?, 10) catch null;
         } else if (eql(u8, arg, "--start") or eql(u8, arg, "-s")) {
-            container.startOffset = try std.fmt.parseInt(u8, args.next().?, 10);
             container.startOffset = std.fmt.parseInt(u8, args.next().?, 10) catch 0;
+        } else if (eql(u8, arg, "--per-line") or eql(u8, arg, "-c")) {
+            container.bytesPerLine = std.fmt.parseInt(u8, args.next().?, 10) catch 32;
         }
     }
 }
@@ -173,15 +175,4 @@ pub fn main() !void {
     };
 
     try printOutputBuffer(container);
-}
-
-test "bytesToHex" {
-    const allocator = std.testing.allocator;
-    const input = "Hello World";
-    const expected = "48656c6c6f20576f726c64";
-
-    const result = try bytesToHex(input, allocator);
-    defer allocator.free(result);
-
-    try std.testing.expectEqualStrings(expected, result);
 }

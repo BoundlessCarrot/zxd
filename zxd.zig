@@ -139,8 +139,10 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
             openFile(args.next().?, container.allocator, &container.inputBuffer);
         } else if (eql(u8, arg, "--length") or eql(u8, arg, "-l")) {
             container.endOffset = try std.fmt.parseInt(usize, args.next().?, 10);
+            container.endOffset = std.fmt.parseInt(usize, args.next().?, 10) catch 0;
         } else if (eql(u8, arg, "--start") or eql(u8, arg, "-s")) {
             container.startOffset = try std.fmt.parseInt(u8, args.next().?, 10);
+            container.startOffset = std.fmt.parseInt(u8, args.next().?, 10) catch 0;
         }
     }
 }

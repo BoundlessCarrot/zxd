@@ -24,7 +24,7 @@
 - [-] Add unit tests for each option
 
 ## 4. Advanced Features
-- [ ] Implement binary file input (`-b` option)
+- [X] Implement binary file input (`-b` option)
 - [ ] Add reverse operation (`-r` option) to convert hex dump back to binary
 - [ ] Implement plain hexdump (`-p` option)
 - [ ] Add option for uppercase hex (`-u`)

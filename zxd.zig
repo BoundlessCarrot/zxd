@@ -6,7 +6,6 @@ const ip = std.ascii.isPrint;
 
 const OutputType = enum {
     hex,
-    octal,
     binary,
 };
 
@@ -17,7 +16,8 @@ const DataContainer = struct {
     outputType: OutputType = OutputType.hex,
     startOffset: usize = 0,
     endOffset: ?usize = null,
-    bytesPerLine: usize = 32,
+    bytesPerLine: usize = 32, // calculated by taking the number of bits and multiplying by 6, need to make that make more sense at some point
+    wordSize: usize = 4, //number of characters per item (in a column)
 
     const Self = @This();
 
@@ -33,6 +33,7 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]c
         std.log.err("Failed to open file: {s}", .{@errorName(err)});
         return;
     };
+
     defer file.close();
 
     const stat = file.stat() catch |err| {
@@ -57,54 +58,48 @@ fn bytesToHex(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
     return result.toOwnedSlice();
 }
 
-fn bytesToOctal(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
-    // var result = std.ArrayList(u8).init(allocator);
-    // defer result.deinit();
-    //
-    // for (bytes) |byte| {
-    //     try result.writer().print("{o:0>8}", .{byte});
-    // }
-
-    // return result.toOwnedSlice();
-    _ = bytes;
-    _ = allocator;
-    return "datatype unsupported for now";
-}
-
 fn bytesToBinary(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
-    // var result = std.ArrayList(u8).init(allocator);
-    // defer result.deinit();
-    //
-    // for (bytes) |byte| {
-    //     try result.writer().print("{b:0>8}", .{byte});
-    // }
-    //
-    // return result.toOwnedSlice();
-    _ = bytes;
-    _ = allocator;
-    return "datatype unsupported for now";
+    var result = std.ArrayList(u8).init(allocator);
+    defer result.deinit();
+
+    for (bytes) |byte| {
+        try result.writer().print("{b:0>8}", .{byte});
+    }
+
+    return result.toOwnedSlice();
 }
 
 fn printOutputBuffer(container: DataContainer) !void {
     var startOffset = container.startOffset;
     const endOffset = if (container.endOffset != null) (startOffset + container.endOffset.?) else container.inputBuffer.len;
 
+    var asciiStart: usize = undefined;
+    var asciiEnd: usize = undefined;
+
     while (startOffset < endOffset) {
         // Figure out how big the current line/chunk is
         const chunk_size = @min(endOffset - startOffset, container.bytesPerLine);
         const chunk = container.outputBuffer[startOffset..(startOffset + chunk_size)];
 
-        // Translate the hex position to ascii position
-        const asciiStart: usize = startOffset / 2;
-        const asciiEnd: usize = asciiStart + (chunk_size / 2);
+        // Translate the translated position to ascii position
+        switch (container.outputType) {
+            OutputType.hex => {
+                asciiStart = startOffset / 2;
+                asciiEnd = asciiStart + (chunk_size / 2);
+            },
+            OutputType.binary => {
+                asciiStart = startOffset / 8;
+                asciiEnd = asciiStart + (chunk_size / 8);
+            },
+        }
 
         // Print byte offset
         try pr.print("{x:0>8}: ", .{startOffset});
 
         // Pring the converted hex
         var j: usize = 0;
-        while (j < chunk_size) : (j += 4) {
-            try pr.print("{s} ", .{if (j + 4 <= chunk_size) chunk[j..(j + 4)] else chunk[j..]});
+        while (j < chunk_size) : (j += container.wordSize) {
+            try pr.print("{s} ", .{if (j + container.wordSize <= chunk_size) chunk[j..(j + container.wordSize)] else chunk[j..]});
         }
 
         // Print the associated ascii
@@ -130,6 +125,7 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
             try pr.print("Flags:\n", .{});
             try pr.print("  -h, --help      Print this help message\n", .{});
             try pr.print("  -H, --hex       Print data in hexadecimal format (default)\n", .{});
+            try pr.print("  -b, --binary    Print data in binary format\n", .{});
             try pr.print("  -f, --file      Read input from specified file\n", .{});
             try pr.print("  -l, --length    Specify number of bytes to read\n", .{});
             try pr.print("  -s, --start     Start reading from specified offset\n", .{});
@@ -137,6 +133,12 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
             std.process.exit(0);
         } else if (eql(u8, arg, "--hex") or eql(u8, arg, "-H")) {
             container.outputType = OutputType.hex;
+            container.wordSize = 4;
+            container.bytesPerLine = 32;
+        } else if (eql(u8, arg, "--binary") or eql(u8, arg, "-b")) {
+            container.outputType = OutputType.binary;
+            container.wordSize = 8;
+            container.bytesPerLine = 48;
         } else if (eql(u8, arg, "--file") or eql(u8, arg, "-f")) {
             openFile(args.next().?, container.allocator, &container.inputBuffer);
         } else if (eql(u8, arg, "--length") or eql(u8, arg, "-l")) {
@@ -170,7 +172,6 @@ pub fn main() !void {
 
     container.outputBuffer = switch (container.outputType) {
         OutputType.hex => try bytesToHex(container.inputBuffer, container.allocator),
-        OutputType.octal => try bytesToOctal(container.inputBuffer, container.allocator),
         OutputType.binary => try bytesToBinary(container.inputBuffer, container.allocator),
     };
 

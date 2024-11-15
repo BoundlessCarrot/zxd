@@ -71,7 +71,7 @@ fn bytesToBinary(bytes: []const u8, allocator: std.mem.Allocator) ![]const u8 {
 
 fn printOutputBuffer(container: DataContainer) !void {
     var startOffset = container.startOffset;
-    const endOffset = if (container.endOffset != null) (startOffset + container.endOffset.?) else container.inputBuffer.len;
+    const endOffset = if (container.endOffset != null) (startOffset + container.endOffset.?) else container.outputBuffer.len;
 
     var asciiStart: usize = undefined;
     var asciiEnd: usize = undefined;

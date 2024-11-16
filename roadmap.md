@@ -26,14 +26,14 @@
 ## 4. Advanced Features
 - [X] Implement binary file input (`-b` option)
 - [ ] Add reverse operation (`-r` option) to convert hex dump back to binary
-- [ ] Implement plain hexdump (`-p` option)
-- [ ] Add option for uppercase hex (`-u`)
+- [X] Implement plain hexdump (`-p` option)
+- [X] Add option for uppercase hex (`-u`)
 - [ ] Implement grouping options (`-g` for octet grouping)
 
 ## 5. Stream Handling
 - [ ] Add support for reading from stdin when no file is specified
 - [ ] Implement proper handling of pipes and redirections
-- [ ] Add support for writing to stdout or files
+- [X] Add support for writing to stdout or files
 
 ## 6. Optimization and Refinement
 - [ ] Optimize memory usage for large files

@@ -63,3 +63,100 @@
 - Original xxd source code for reference
 - Zig documentation for file I/O and string manipulation
 - Hexdump format specifications
+
+---
+# PART 2: TUI Hex Editor Implementation
+
+## 9. Basic TUI Setup
+- [ ] Research and choose a TUI library (e.g., zig-ncurses, zig-termbox)
+- [ ] Set up basic window management
+- [ ] Implement status bar
+- [ ] Create basic event loop
+- [ ] Handle window resize events
+- [ ] Add quit functionality
+
+## 9. Display Component
+- [ ] Create hex view layout (address + hex + ASCII)
+- [ ] Implement scrolling functionality
+- [ ] Add line numbers/addresses
+- [ ] Support different window sizes
+- [ ] Handle files larger than screen size
+- [ ] Implement syntax highlighting for different sections
+
+## 10. Navigation
+- [ ] Add cursor movement (arrows, hjkl)
+- [ ] Implement page up/down
+- [ ] Add jump to address functionality
+- [ ] Create search functionality (hex/ASCII)
+- [ ] Implement mouse support (if desired)
+- [ ] Add bookmarks for positions
+
+## 11. Editing Features
+- [ ] Implement insert mode for hex editing
+- [ ] Add ASCII editing mode
+- [ ] Support undo/redo operations
+- [ ] Add cut/copy/paste in hex format
+- [ ] Implement byte insertion/deletion
+- [ ] Add block operations (fill, copy, move)
+
+## 12. File Operations
+- [ ] Integrate file loading from xxd implementation
+- [ ] Add file saving functionality
+- [ ] Implement backup creation
+- [ ] Add save-as functionality
+- [ ] Support for creating new files
+- [ ] Add read-only mode
+
+## 13. Advanced Features
+- [ ] Add split view (hex/decoded)
+- [ ] Implement data inspector (common formats)
+- [ ] Add binary template support
+- [ ] Create pattern matching/highlighting
+- [ ] Support for different encodings
+- [ ] Add hex calculator
+
+## 14. User Interface Enhancements
+- [ ] Add command line (like vim)
+- [ ] Create context-sensitive help
+- [ ] Implement status messages
+- [ ] Add configuration file support
+- [ ] Create custom color schemes
+- [ ] Add different view modes (byte, word, dword)
+
+## 15. Analysis Tools
+- [ ] Add entropy visualization
+- [ ] Implement pattern recognition
+- [ ] Add data statistics
+- [ ] Create hex comparison tool
+- [ ] Support for checksums/hashing
+- [ ] Add file format detection
+
+## 16. Performance Optimization
+- [ ] Implement efficient buffer management
+- [ ] Add memory mapped file support
+- [ ] Optimize screen updates
+- [ ] Add background processing for large files
+- [ ] Implement partial file loading
+- [ ] Add caching for viewed regions
+
+## 17. Extra Features
+- [ ] Add plugin system
+- [ ] Create macro recording/playback
+- [ ] Add remote file editing
+- [ ] Implement collaborative editing
+- [ ] Add session management
+- [ ] Create export/import functionality
+
+## Notes
+- Reuse code from xxd implementation where possible
+- Focus on vim-like keybindings for familiarity
+- Maintain high performance with large files
+- Keep the interface intuitive for both hex and ASCII editing
+
+## Resources
+- Documentation for chosen TUI library
+- Existing hex editors for inspiration (hexcurse, hexyl)
+- File format specifications
+- Unicode specification for character display
+
+

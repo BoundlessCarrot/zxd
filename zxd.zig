@@ -7,7 +7,6 @@ const ip = std.ascii.isPrint;
 const OutputType = enum {
     hex,
     binary,
-    ascii,
     plain,
 };
 
@@ -181,7 +180,9 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
         } else if (eql(u8, arg, "--plain") or eql(u8, arg, "-p")) {
             container.outputType = OutputType.plain;
         } else if (eql(u8, arg, "--reverse") or eql(u8, arg, "-r")) {
-            container.outputType = OutputType.ascii;
+            // container.outputType = OutputType.ascii;
+            try pr.print("Feature not ready yet\n", .{});
+            std.process.exit(0);
         } else if (eql(u8, arg, "--uppercase") or eql(u8, arg, "-u")) {
             container.uppercaseHex = true;
         } else if (eql(u8, arg, "--file") or eql(u8, arg, "-f")) {
@@ -221,13 +222,11 @@ pub fn main() !void {
     container.outputBuffer = switch (container.outputType) {
         OutputType.hex, OutputType.plain => try bytesToHex(container.inputBuffer, container.allocator, container.uppercaseHex),
         OutputType.binary => try bytesToBinary(container.inputBuffer, container.allocator),
-        OutputType.ascii => "a",
     };
 
     if (container.outputToFile) {
         try createAndPrepFile(container);
-        std.process.exit(0);
+    } else {
+        try printOutputBuffer(container);
     }
-
-    try printOutputBuffer(container);
 }

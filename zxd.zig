@@ -32,6 +32,17 @@ const DataContainer = struct {
 };
 
 pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]const u8) void {
+    // const stdin = std.io.getStdIn();
+    // const isPiped = !stdin.isTty();
+    //
+    // if (isPiped) {
+    //     var buffered_reader = std.io.bufferedReader(stdin.reader());
+    //     var reader = buffered_reader.reader();
+    //     _ = reader.readAll(buffer.*) catch |err| {
+    //         std.log.err("Failed to ingest piped data: {s}\n", .{@errorName(err)});
+    //         return;
+    //     };
+    // } else {
     // Get file handler and defer it closing
     const file = std.fs.cwd().openFile(filename, .{}) catch |err| {
         std.log.err("Failed to open file: {s}\n", .{@errorName(err)});
@@ -49,6 +60,7 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]c
         std.log.err("Failed to read file: {s}\n", .{@errorName(err)});
         return;
     };
+    // }
 }
 
 pub fn createAndPrepFile(container: DataContainer) !void {
@@ -111,7 +123,7 @@ fn printOutputBuffer(container: DataContainer) !void {
         const chunk_size = @min(endOffset - startOffset, container.bytesPerLine);
         const chunk = container.outputBuffer[startOffset..(startOffset + chunk_size)];
 
-        // Translate the translated position to ascii position
+        // Convert the translated position to ascii position
         switch (container.outputType) {
             OutputType.hex => {
                 asciiStart = startOffset / 2;
@@ -125,16 +137,24 @@ fn printOutputBuffer(container: DataContainer) !void {
                 try pr.print("{s}", .{container.outputBuffer});
                 break;
             },
-            else => unreachable,
         }
 
         // Print byte offset
         try pr.print("{x:0>8}: ", .{startOffset});
 
-        // Pring the converted hex
+        // Print the converted data
         var j: usize = 0;
         while (j < chunk_size) : (j += container.wordSize) {
             try pr.print("{s} ", .{if (j + container.wordSize <= chunk_size) chunk[j..(j + container.wordSize)] else chunk[j..]});
+        }
+
+        // Pad output if shorter line
+        if (chunk_size < container.bytesPerLine) {
+            const missing_groups = (container.bytesPerLine - chunk_size) / (container.wordSize);
+            const padding_spaces = missing_groups * (container.wordSize + 1); // wordSize + 1 space
+            for (0..padding_spaces) |_| {
+                try pr.print(" ", .{});
+            }
         }
 
         // Print the associated ascii
@@ -164,10 +184,12 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
             try pr.print("  -u, --uppercase Print hexadecimal with uppercase characters\n", .{});
             try pr.print("  -b, --binary    Print data in binary format\n", .{});
             try pr.print("  -f, --file      Read input from specified file\n", .{});
+            try pr.print("  --              Read input from stdin\n", .{});
             try pr.print("  -l, --length    Specify number of bytes to read\n", .{});
             try pr.print("  -s, --start     Start reading from specified offset\n", .{});
             try pr.print("  -c, --per-line  Control the number of bytes per line\n", .{});
             try pr.print("  -o, --output    Specify a file for program output (stdout by default)\n", .{});
+            try pr.print("  -g, --group     Specify how many bytes to group together (has to come after format specifier)\n", .{});
             std.process.exit(0);
         } else if (eql(u8, arg, "--hex") or eql(u8, arg, "-H")) {
             container.outputType = OutputType.hex;
@@ -188,14 +210,38 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
         } else if (eql(u8, arg, "--file") or eql(u8, arg, "-f")) {
             openFile(args.next().?, container.allocator, &container.inputBuffer);
         } else if (eql(u8, arg, "--length") or eql(u8, arg, "-l")) {
-            container.endOffset = std.fmt.parseInt(usize, args.next().?, 10) catch null;
+            container.endOffset = std.fmt.parseInt(usize, args.next().?, 10) catch |err| blk: {
+                std.log.err("Couldn't set value: {s}\n", .{@errorName(err)});
+                break :blk null;
+            };
         } else if (eql(u8, arg, "--start") or eql(u8, arg, "-s")) {
-            container.startOffset = std.fmt.parseInt(u8, args.next().?, 10) catch 0;
+            container.startOffset = std.fmt.parseInt(u8, args.next().?, 10) catch |err| blk: {
+                std.log.err("Couldn't set value: {s}\n", .{@errorName(err)});
+                break :blk 0;
+            };
         } else if (eql(u8, arg, "--per-line") or eql(u8, arg, "-c")) {
-            container.bytesPerLine = std.fmt.parseInt(u8, args.next().?, 10) catch 32;
+            container.bytesPerLine = std.fmt.parseInt(u8, args.next().?, 10) catch |err| blk: {
+                std.log.err("Couldn't set value: {s}\n", .{@errorName(err)});
+                break :blk 32;
+            };
         } else if (eql(u8, arg, "--output") or eql(u8, arg, "-o")) {
             container.outputToFile = true;
             container.outputFilename = args.next().?;
+        } else if (eql(u8, arg, "--")) {
+            const input = args.next().?;
+            container.inputBuffer = try container.allocator.dupe(u8, input);
+        } else if (eql(u8, arg, "--group") or eql(u8, arg, "-g")) {
+            const inputValue = std.fmt.parseInt(usize, args.next().?, 10) catch |err| blk: {
+                std.log.err("Couldn't get value: {s}\n", .{@errorName(err)});
+                break :blk 4;
+            };
+
+            if (inputValue < 1) {
+                std.log.err("Couldn't set value because it is less than 1\n", .{});
+                container.wordSize = 4;
+            } else {
+                container.wordSize = inputValue * 2;
+            }
         }
     }
 }

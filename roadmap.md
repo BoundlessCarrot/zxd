@@ -32,7 +32,7 @@
 
 ## 5. Stream Handling
 - [X] Add support for reading from stdin when no file is specified
-- [ ] Implement proper handling of pipes and redirections
+- [X] Implement proper handling of pipes and redirections
 - [X] Add support for writing to stdout or files
 
 ## 6. Optimization and Refinement

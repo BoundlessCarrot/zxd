@@ -32,17 +32,6 @@ const DataContainer = struct {
 };
 
 pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]const u8) void {
-    // const stdin = std.io.getStdIn();
-    // const isPiped = !stdin.isTty();
-    //
-    // if (isPiped) {
-    //     var buffered_reader = std.io.bufferedReader(stdin.reader());
-    //     var reader = buffered_reader.reader();
-    //     _ = reader.readAll(buffer.*) catch |err| {
-    //         std.log.err("Failed to ingest piped data: {s}\n", .{@errorName(err)});
-    //         return;
-    //     };
-    // } else {
     // Get file handler and defer it closing
     const file = std.fs.cwd().openFile(filename, .{}) catch |err| {
         std.log.err("Failed to open file: {s}\n", .{@errorName(err)});
@@ -60,7 +49,6 @@ pub fn openFile(filename: []const u8, allocator: std.mem.Allocator, buffer: *[]c
         std.log.err("Failed to read file: {s}\n", .{@errorName(err)});
         return;
     };
-    // }
 }
 
 pub fn createAndPrepFile(container: DataContainer) !void {
@@ -246,6 +234,23 @@ fn processCommandLineArgs(args: *std.process.ArgIterator, container: *DataContai
     }
 }
 
+pub fn readFromStdin(allocator: std.mem.Allocator, buffer: *[]const u8) !void {
+    const stdin = std.io.getStdIn();
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+
+    const reader = stdin.reader();
+    var readBuf: [4096]u8 = undefined;
+
+    while (true) {
+        const bytesRead = try reader.read(&readBuf);
+        if (bytesRead == 0) break;
+        try buf.appendSlice(readBuf[0..bytesRead]);
+    }
+
+    buffer.* = try buf.toOwnedSlice();
+}
+
 pub fn main() !void {
     // Init allocator
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -263,12 +268,19 @@ pub fn main() !void {
     var container: DataContainer = .{ .allocator = gpa.allocator() };
     defer container.deinit();
 
+    const stdin = std.io.getStdIn();
+    if (!stdin.isTty()) {
+        try readFromStdin(container.allocator, &container.inputBuffer);
+    }
+
     try processCommandLineArgs(&args, &container);
 
     container.outputBuffer = switch (container.outputType) {
         OutputType.hex, OutputType.plain => try bytesToHex(container.inputBuffer, container.allocator, container.uppercaseHex),
         OutputType.binary => try bytesToBinary(container.inputBuffer, container.allocator),
     };
+
+    std.debug.print("input buf: {s}\n\n", .{container.inputBuffer});
 
     if (container.outputToFile) {
         try createAndPrepFile(container);
